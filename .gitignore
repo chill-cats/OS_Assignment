@@ -1,0 +1,9 @@
+compile_commands.json
+out/**
+obj/**
+os
+mem
+
+.DS_Store
+
+.vscode
