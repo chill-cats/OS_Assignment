@@ -1,9 +1,14 @@
+# compile_commands.json is OS-dependent
 compile_commands.json
+
+#exludes all build files
 out/**
 obj/**
 os
 mem
 
+# macos specific
 .DS_Store
 
+# user config
 .vscode
