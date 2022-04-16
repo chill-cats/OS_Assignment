@@ -12,3 +12,6 @@ mem
 
 # user config
 .vscode
+
+# clangd cache file
+.cache
