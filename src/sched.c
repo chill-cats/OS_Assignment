@@ -26,7 +26,7 @@ struct pcb_t* get_proc(void) {
     pthread_mutex_lock(&queue_lock);
     if (empty(&ready_queue) && !empty(&run_queue)) {
         memcpy(ready_queue.proc, run_queue.proc, run_queue.size * sizeof(struct pcb_t*));
-        memset(run_queue.proc, NULL, MAX_QUEUE_SIZE * sizeof(struct pcb_t*));
+        memset(run_queue.proc, 0, MAX_QUEUE_SIZE * sizeof(struct pcb_t*));
         ready_queue.size = run_queue.size;
         run_queue.size   = 0;
     }
