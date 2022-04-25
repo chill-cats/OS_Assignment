@@ -7,7 +7,7 @@ OBJ = obj
 INCLUDE = include
 
 CC = gcc
-DEBUG = -g
+DEBUG = -g -O0
 CFLAGS = -Wall -c $(DEBUG)
 LFLAGS = -Wall $(DEBUG)
 

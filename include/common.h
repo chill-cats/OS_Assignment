@@ -10,7 +10,9 @@
 #define PAGE_LEN 5
 
 #define NUM_PAGES (1 << (ADDRESS_SIZE - OFFSET_LEN))
-#define PAGE_SIZE (1 << OFFSET_LEN)
+#define PAGE_SIZE (1 << OFFSET_LEN) // 1kb page size
+#define MAX_SEGMENT_COUNT (1 << SEGMENT_LEN)
+#define MAX_PAGE_PER_SEGMENT (1 << PAGE_LEN)
 
 typedef char BYTE;
 typedef uint32_t addr_t;
@@ -65,3 +67,6 @@ struct pcb_t {
     struct seg_table_t *seg_table; // Page table
     uint32_t bp;                   // Break pointer
 };
+
+// each program have 32 segment
+// each segment have 32 pages
