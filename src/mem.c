@@ -44,13 +44,8 @@ static struct page_table_t *get_page_table(
     addr_t index,                    // Segment level index
     struct seg_table_t *seg_table) { // first level table
 
-    /*
-     * TODO: Given the Segment index [index], you must go through each
-     * row of the segment table [seg_table] and check if the v_index
-     * field of the row is equal to the index
-     *
-     * */
     for (uint32_t i = 0; i < seg_table->segment_count; i++) {
+
         if (seg_table->segments[i].v_index == index) {
             return seg_table->segments[i].pages;
         }
@@ -81,11 +76,9 @@ static int translate(
     }
 
     for (uint32_t i = 0; i < page_table->page_count; i++) {
+
         if (page_table->pages[i].v_index == second_lv) {
-            /* TODO: Concatenate the offset of the virtual addess
-             * to [p_index] field of page_table->table[i] to
-             * produce the correct physical address and save it to
-             * [*physical_addr]  */
+
             uint32_t physical_index = page_table->pages[i].p_index;
             *physical_addr = ((physical_index << OFFSET_LEN) | (offset));
             return 1;
