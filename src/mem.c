@@ -117,10 +117,6 @@ void initialize_page_table(struct page_table_t *page_table) {
 addr_t alloc_mem(uint32_t size, struct pcb_t *proc) {
     pthread_mutex_lock(&mem_lock);
     addr_t ret_mem = 0;
-    /* TODO: Allocate [size] byte in the memory for the
-     * process [proc] and save the address of the first
-     * byte in the allocated memory region to [ret_mem].
-     * */
 
     uint32_t required_page_count = (size % PAGE_SIZE) ? size / PAGE_SIZE + 1 : size / PAGE_SIZE; // Number of pages we will use
     uint32_t *free_frame_physical_indexes = calloc(required_page_count, sizeof(uint32_t));
@@ -212,14 +208,6 @@ void adjust_bp(struct pcb_t *proc) {
 }
 
 int free_mem(addr_t address, struct pcb_t *proc) {
-    /*TODO: Release memory region allocated by [proc]. The first byte of
-     * this region is indicated by [address]. Task to do:
-     * 	- Set flag [proc] of physical page use by the memory block
-     * 	  back to zero to indicate that it is free.
-     * 	- Remove unused entries in segment table and page tables of
-     * 	  the process [proc].
-     * 	- Remember to use lock to protect the memory from other
-     * 	  processes.  */
     pthread_mutex_lock(&mem_lock);
 
     uint32_t current_address = address;
