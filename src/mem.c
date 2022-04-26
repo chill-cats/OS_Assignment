@@ -67,20 +67,20 @@ static int translate(
     /* Offset of the virtual address */
     addr_t offset = get_offset(virtual_addr);
     /* The first layer index */
-    addr_t first_lv = get_first_lv(virtual_addr);
+    addr_t segment_index = get_first_lv(virtual_addr);
     /* The second layer index */
-    addr_t second_lv = get_second_lv(virtual_addr);
+    addr_t page_index = get_second_lv(virtual_addr);
 
     /* Search in the first level */
     struct page_table_t *page_table = NULL;
-    page_table = get_page_table(first_lv, proc->seg_table);
+    page_table = get_page_table(segment_index, proc->seg_table);
     if (page_table == NULL) {
         return 0;
     }
 
     for (uint32_t i = 0; i < page_table->page_count; i++) {
 
-        if (page_table->pages[i].v_index == second_lv) {
+        if (page_table->pages[i].v_index == page_index) {
 
             uint32_t physical_index = page_table->pages[i].p_index;
             *physical_addr = ((physical_index << OFFSET_LEN) | (offset));
@@ -90,23 +90,19 @@ static int translate(
     return 0;
 }
 
-void set_mem_stat(uint32_t index, uint32_t pid, int next) {
+static void set_mem_stat(uint32_t index, uint32_t pid, int next) {
     _mem_stat[index].proc = pid;
     _mem_stat[index].index = index;
     _mem_stat[index].next = next;
 }
 
-void unset_mem_stat(uint32_t index) {
+static void unset_mem_stat(uint32_t index) {
     _mem_stat[index].proc = 0;
     _mem_stat[index].index = 0;
     _mem_stat[index].next = -1;
 }
 
-int set_page(struct seg_table_t *segment_table, uint32_t segment_index, uint32_t page_index, uint32_t physical_index, uint32_t virtual_index) {
-    return 1;
-}
-
-void initialize_page_table(struct page_table_t *page_table) {
+static void initialize_page_table(struct page_table_t *page_table) {
     for (uint32_t i = 0; i < MAX_PAGE_PER_SEGMENT; i++) {
         page_table->pages[i].p_index = MAX_PAGE_PER_SEGMENT;
         page_table->pages[i].v_index = MAX_PAGE_PER_SEGMENT;
