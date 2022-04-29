@@ -6,10 +6,14 @@ SRC = src
 OBJ = obj
 INCLUDE = include
 
-CC = gcc
-DEBUG = -g -O0
-CFLAGS = -Wall -c $(DEBUG)
-LFLAGS = -Wall $(DEBUG)
+CC = clang
+ifeq ($(DEBUG),TRUE)
+	DEBUG=-g -O0 -DDEBUG
+else
+	DEBUG=-g -O3
+endif
+CFLAGS = -Wall -Wextra -c $(DEBUG)
+LFLAGS = -Wall -Wextra -flto $(DEBUG)
 
 vpath %.c $(SRC)
 vpath %.h $(INCLUDE)

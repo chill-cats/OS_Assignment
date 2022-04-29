@@ -1,35 +1,35 @@
 #include "cpu.h"
-#include "timer.h"
-#include "sched.h"
 #include "loader.h"
 #include "mem.h"
+#include "sched.h"
+#include "timer.h"
 
 #include <pthread.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 static int time_slot;
 static int num_cpus;
 static int done = 0;
 
 static struct ld_args {
-    char**         path;
-    unsigned long* start_time;
+    char **path;
+    unsigned long *start_time;
 } ld_processes;
 int num_processes;
 
 struct cpu_args {
-    struct timer_id_t* timer_id;
-    int                id;
+    struct timer_id_t *timer_id;
+    int id;
 };
 
-static void* cpu_routine(void* args) {
-    struct timer_id_t* timer_id = ((struct cpu_args*)args)->timer_id;
-    int                id       = ((struct cpu_args*)args)->id;
+static void *cpu_routine(void *args) {
+    struct timer_id_t *timer_id = ((struct cpu_args *)args)->timer_id;
+    int id = ((struct cpu_args *)args)->id;
     /* Check for new process in ready queue */
-    int           time_left = 0;
-    struct pcb_t* proc      = NULL;
+    int time_left = 0;
+    struct pcb_t *proc = NULL;
     while (1) {
         /* Check the status of current process */
         if (proc == NULL) {
@@ -40,7 +40,7 @@ static void* cpu_routine(void* args) {
             /* The porcess has finish it job */
             printf("\tCPU %d: Processed %2d has finished\n", id, proc->pid);
             free(proc);
-            proc      = get_proc();
+            proc = get_proc();
             time_left = 0;
         } else if (time_left == 0) {
             /* The process has done its job in current time slot */
@@ -52,7 +52,7 @@ static void* cpu_routine(void* args) {
         /* Recheck process status after loading new process */
         if (proc == NULL && done) {
             /* No process to run, exit */
-            printf("\tCPU %d stopped\n", id);
+            printf("\tCPU %d: stopped\n", id);
             break;
         } else if (proc == NULL) {
             /* There may be new processes to run in
@@ -73,11 +73,11 @@ static void* cpu_routine(void* args) {
     pthread_exit(NULL);
 }
 
-static void* ld_routine(void* args) {
-    struct timer_id_t* timer_id = (struct timer_id_t*)args;
-    int                i        = 0;
+static void *ld_routine(void *args) {
+    struct timer_id_t *timer_id = (struct timer_id_t *)args;
+    int i = 0;
     while (i < num_processes) {
-        struct pcb_t* proc = load(ld_processes.path[i]);
+        struct pcb_t *proc = load(ld_processes.path[i]);
         while (current_time() < ld_processes.start_time[i]) {
             next_slot(timer_id);
         }
@@ -94,18 +94,18 @@ static void* ld_routine(void* args) {
     pthread_exit(NULL);
 }
 
-static void read_config(const char* path) {
-    FILE* file;
+static void read_config(const char *path) {
+    FILE *file;
     if ((file = fopen(path, "r")) == NULL) {
         printf("Cannot find configure file at %s\n", path);
         exit(1);
     }
     fscanf(file, "%d %d %d\n", &time_slot, &num_cpus, &num_processes);
-    ld_processes.path       = (char**)malloc(sizeof(char*) * num_processes);
-    ld_processes.start_time = (unsigned long*)malloc(sizeof(unsigned long) * num_processes);
+    ld_processes.path = (char **)malloc(sizeof(char *) * num_processes);
+    ld_processes.start_time = (unsigned long *)malloc(sizeof(unsigned long) * num_processes);
     int i;
     for (i = 0; i < num_processes; i++) {
-        ld_processes.path[i]    = (char*)malloc(sizeof(char) * 100);
+        ld_processes.path[i] = (char *)malloc(sizeof(char) * 100);
         ld_processes.path[i][0] = '\0';
         strcat(ld_processes.path[i], "input/proc/");
         char proc[100];
@@ -114,7 +114,7 @@ static void read_config(const char* path) {
     }
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     /* Read config */
     if (argc != 2) {
         printf("Usage: os [path to configure file]\n");
@@ -122,26 +122,29 @@ int main(int argc, char* argv[]) {
     }
     read_config(argv[1]);
 
-    pthread_t*       cpu  = (pthread_t*)malloc(num_cpus * sizeof(pthread_t));
-    struct cpu_args* args = (struct cpu_args*)malloc(sizeof(struct cpu_args) * num_cpus);
-    pthread_t        ld;
+    pthread_t *cpu = (pthread_t *)malloc(num_cpus * sizeof(pthread_t));
+    struct cpu_args *args = (struct cpu_args *)malloc(sizeof(struct cpu_args) * num_cpus);
+    pthread_t ld;
 
     /* Init timer */
     int i;
     for (i = 0; i < num_cpus; i++) {
         args[i].timer_id = attach_event();
-        args[i].id       = i;
+        args[i].id = i;
     }
-    struct timer_id_t* ld_event = attach_event();
+    struct timer_id_t *ld_event = attach_event();
     start_timer();
 
     /* Init scheduler */
     init_scheduler();
 
+    /* Init memory */
+    init_mem();
+
     /* Run CPU and loader */
-    pthread_create(&ld, NULL, ld_routine, (void*)ld_event);
+    pthread_create(&ld, NULL, ld_routine, (void *)ld_event);
     for (i = 0; i < num_cpus; i++) {
-        pthread_create(&cpu[i], NULL, cpu_routine, (void*)&args[i]);
+        pthread_create(&cpu[i], NULL, cpu_routine, (void *)&args[i]);
     }
 
     /* Wait for CPU and loader finishing */

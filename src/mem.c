@@ -25,6 +25,7 @@ void init_mem(void) {
     memset(_mem_stat, 0, sizeof(*_mem_stat) * NUM_PAGES);
     memset(_ram, 0, sizeof(BYTE) * RAM_SIZE);
     pthread_mutex_init(&mem_lock, NULL);
+    INFO_PRINT("Memory initialized\n");
 }
 
 /* get offset of the virtual address */
@@ -84,6 +85,8 @@ static int translate(
 
             uint32_t physical_index = page_table->pages[i].p_index;
             *physical_addr = ((physical_index << OFFSET_LEN) | (offset));
+            INFO_PRINT("PID %d: translate 0x%02x -> 0x%02x\n", proc->pid,
+                       virtual_addr, *physical_addr);
             return 1;
         }
     }
@@ -111,10 +114,12 @@ static void initialize_page_table(struct page_table_t *page_table) {
 }
 
 addr_t alloc_mem(uint32_t size, struct pcb_t *proc) {
+    INFO_PRINT("PID %d: Allocating %d bytes\n", proc->pid, size);
     pthread_mutex_lock(&mem_lock);
     addr_t ret_mem = 0;
 
     uint32_t required_page_count = (size % PAGE_SIZE) ? size / PAGE_SIZE + 1 : size / PAGE_SIZE; // Number of pages we will use
+    INFO_PRINT("PID %d: Required page count: %d\n", proc->pid, required_page_count);
     uint32_t *free_frame_physical_indexes = calloc(required_page_count, sizeof(uint32_t));
     uint32_t free_frame_available = 0;
 
@@ -131,6 +136,7 @@ addr_t alloc_mem(uint32_t size, struct pcb_t *proc) {
     const uint32_t start_of_chunk = proc->bp;
     const uint32_t end_of_chunk = proc->bp + PAGE_SIZE * required_page_count;
     if (free_frame_available < required_page_count && end_of_chunk > RAM_SIZE) {
+        INFO_PRINT("PID %d: Not enough memory\n", proc->pid);
         pthread_mutex_unlock(&mem_lock);
         return 1;
     }
@@ -139,6 +145,8 @@ addr_t alloc_mem(uint32_t size, struct pcb_t *proc) {
         const uint32_t free_frame_physical_index = free_frame_physical_indexes[i];
         // _mem_stat handling
         set_mem_stat(free_frame_physical_index, proc->pid, i == free_frame_available - 1 ? -1 : free_frame_physical_indexes[i + 1]);
+        INFO_PRINT("PID %d: Free frame physical index: %d\n", proc->pid, free_frame_physical_index);
+        INFO_PRINT("PID %d: Free frame info: proc: %d, index: %d, next: %d\n", proc->pid, _mem_stat[free_frame_physical_index].proc, _mem_stat[free_frame_physical_index].index, _mem_stat[free_frame_physical_index].next);
 
         uint32_t current_address = start_of_chunk + i * PAGE_SIZE;
         uint32_t current_segment_v_index = get_first_lv(current_address);
@@ -176,6 +184,10 @@ addr_t alloc_mem(uint32_t size, struct pcb_t *proc) {
      * 	- Add entries to segment table page tables of [proc]
      * 	  to ensure accesses to allocated memory slot is
      * 	  valid. */
+
+#ifdef DEBUG
+    // dump();
+#endif
     pthread_mutex_unlock(&mem_lock);
     return ret_mem;
 }
@@ -259,7 +271,9 @@ int free_mem(addr_t address, struct pcb_t *proc) {
         adjust_bp(proc);
         current_address += PAGE_SIZE;
     }
-
+#ifdef DEBUG
+    // dump();
+#endif
     pthread_mutex_unlock(&mem_lock);
 
     return 0;
@@ -269,8 +283,10 @@ int read_mem(addr_t address, struct pcb_t *proc, BYTE *data) {
     addr_t physical_addr;
     if (translate(address, &physical_addr, proc)) {
         *data = _ram[physical_addr];
+        INFO_PRINT("PID: %d read at address 0x%x, got data 0x%02x\n", proc->pid, address, *data);
         return 0;
     } else {
+        INFO_PRINT("PID: %d failed to read at address 0x%02x\n", proc->pid, address);
         return 1;
     }
 }
@@ -279,8 +295,10 @@ int write_mem(addr_t address, struct pcb_t *proc, BYTE data) {
     addr_t physical_addr;
     if (translate(address, &physical_addr, proc)) {
         _ram[physical_addr] = data;
+        INFO_PRINT("PID: %d wrote at address 0x%x, with data 0x%02x\n", proc->pid, address, data);
         return 0;
     } else {
+        INFO_PRINT("PID: %d failed to write at address 0x%x, with data 0x%02x\n", proc->pid, address, data);
         return 1;
     }
 }

@@ -15,3 +15,5 @@ mem
 
 # clangd cache file
 .cache
+
+Profile.trace/

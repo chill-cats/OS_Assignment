@@ -4,6 +4,13 @@
 
 #include <stdint.h>
 
+#ifdef DEBUG
+#include <stdio.h>
+#define INFO_PRINT(fmt, ...) fprintf(stdout, "\033[32m[INFO]\t\t" fmt "\033[0m", ##__VA_ARGS__)
+#else
+#define INFO_PRINT(fmt, ...)
+#endif
+
 #define ADDRESS_SIZE 20
 #define OFFSET_LEN 10
 #define SEGMENT_LEN 5
@@ -44,7 +51,7 @@ struct page_table_t {
         addr_t v_index; // The index of virtual address
         addr_t p_index; // The index of physical address
     } pages[1 << SEGMENT_LEN];
-    int page_count;
+    uint32_t page_count;
 };
 
 /* Mapping virtual addresses and physical ones */
@@ -54,7 +61,7 @@ struct seg_table_t {
         addr_t v_index; // Virtual index
         struct page_table_t *pages;
     } segments[1 << PAGE_LEN];
-    int segment_count; // Number of row in the first layer
+    uint32_t segment_count; // Number of row in the first layer
 };
 
 /* PCB, describe information about a process */
