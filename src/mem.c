@@ -51,7 +51,7 @@ static struct page_table_t *get_page_table(
     for (uint32_t i = 0; i < seg_table->segment_count; i++) {
 
         if (seg_table->segments[i].v_index == index) {
-            return seg_table->segments[i].pages;
+            return seg_table->segments[i].pages_table;
         }
     }
     return NULL;
@@ -156,14 +156,14 @@ addr_t alloc_mem(uint32_t size, struct pcb_t *proc) {
 
         for (uint32_t segment_index = 0; segment_index < proc->seg_table->segment_count; segment_index++) {
             if (proc->seg_table->segments[segment_index].v_index == current_segment_v_index) {
-                page_table = proc->seg_table->segments[segment_index].pages;
+                page_table = proc->seg_table->segments[segment_index].pages_table;
                 break;
             }
         }
 
         if (page_table == NULL) {
             page_table = calloc(1, sizeof(struct page_table_t));
-            proc->seg_table->segments[proc->seg_table->segment_count].pages = page_table;
+            proc->seg_table->segments[proc->seg_table->segment_count].pages_table = page_table;
             proc->seg_table->segments[proc->seg_table->segment_count].v_index = current_segment_v_index;
             proc->seg_table->segment_count++;
 
@@ -206,9 +206,9 @@ void adjust_bp(struct pcb_t *proc) {
         }
     }
     uint32_t max_page_v_index = 0;
-    for (uint32_t i = 0; i < proc->seg_table->segments[max_v_index_segment_index].pages->page_count; i++) {
-        if (proc->seg_table->segments[max_v_index_segment_index].pages->pages[i].v_index > max_page_v_index) {
-            max_page_v_index = proc->seg_table->segments[max_v_index_segment_index].pages->pages[i].v_index;
+    for (uint32_t i = 0; i < proc->seg_table->segments[max_v_index_segment_index].pages_table->page_count; i++) {
+        if (proc->seg_table->segments[max_v_index_segment_index].pages_table->pages[i].v_index > max_page_v_index) {
+            max_page_v_index = proc->seg_table->segments[max_v_index_segment_index].pages_table->pages[i].v_index;
         }
     }
 
@@ -259,7 +259,7 @@ int free_mem(addr_t address, struct pcb_t *proc) {
         if (page_table->page_count == 0) {
             for (int i = 0; i < proc->seg_table->segment_count; i++) {
                 if (proc->seg_table->segments[i].v_index == current_segment_v_index) {
-                    free(proc->seg_table->segments[i].pages);
+                    free(proc->seg_table->segments[i].pages_table);
                     for (int j = i; j < proc->seg_table->segment_count - 1; j++) {
                         proc->seg_table->segments[j] = proc->seg_table->segments[j + 1];
                     }
