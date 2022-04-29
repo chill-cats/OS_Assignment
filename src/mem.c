@@ -248,7 +248,7 @@ int free_mem(addr_t address, struct pcb_t *proc) {
 
         page_table->pages[current_page_index].p_index = 32;
         page_table->pages[current_page_index].v_index = 32;
-        for (int i = current_page_index; i < page_table->page_count - 1; i++) {
+        for (uint32_t i = current_page_index; i < page_table->page_count - 1; i++) {
             page_table->pages[i] = page_table->pages[i + 1];
         }
 
@@ -257,10 +257,10 @@ int free_mem(addr_t address, struct pcb_t *proc) {
         page_table->page_count--;
 
         if (page_table->page_count == 0) {
-            for (int i = 0; i < proc->seg_table->segment_count; i++) {
+            for (uint32_t i = 0; i < proc->seg_table->segment_count; i++) {
                 if (proc->seg_table->segments[i].v_index == current_segment_v_index) {
                     free(proc->seg_table->segments[i].pages_table);
-                    for (int j = i; j < proc->seg_table->segment_count - 1; j++) {
+                    for (uint32_t j = i; j < proc->seg_table->segment_count - 1; j++) {
                         proc->seg_table->segments[j] = proc->seg_table->segments[j + 1];
                     }
                     proc->seg_table->segment_count--;
