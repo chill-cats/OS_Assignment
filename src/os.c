@@ -133,13 +133,14 @@ int main(int argc, char *argv[]) {
         args[i].id = i;
     }
     struct timer_id_t *ld_event = attach_event();
+
+    /* Init memory */
+    init_mem();
+
     start_timer();
 
     /* Init scheduler */
     init_scheduler();
-
-    /* Init memory */
-    init_mem();
 
     /* Run CPU and loader */
     pthread_create(&ld, NULL, ld_routine, (void *)ld_event);
