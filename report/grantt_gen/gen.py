@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
+from cProfile import label
+import enum
 import re
 import sys
+from turtle import color
+import numpy as np
 
 import pandas as pd
 # import numpy as np
-# import matplotlib.pyplot as plt
-# from matplotlib.patches import Patch
+import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
+import typing
+
+from pyparsing import alphas
 
 TIME_SLOT_REGEX = re.compile(r'^Time slot\s*(\d+)$')
 LOAD_REGEX = re.compile(
@@ -64,7 +71,8 @@ def read_data_from_stdin():
             pid = int(preempt_match_result.group(2))
             print("CPU", cpu_id, "preempted process", pid)
 
-            data[cpu_id][len(data[cpu_id]) - 1].preempt_time = current_time_slot
+            data[cpu_id][len(data[cpu_id]) -
+                         1].preempt_time = current_time_slot
 
             continue
 
@@ -76,7 +84,6 @@ def read_data_from_stdin():
 
             data[cpu_id][len(data[cpu_id]) -
                          1].preempt_time = current_time_slot
-
             continue
 
     for cpu in data:
@@ -87,28 +94,60 @@ def read_data_from_stdin():
     return data
 
 
+def task_color(task_id):
+    #8 pastel colors
+    colors = ['#FFA987', '#E54B4B', '#F7EBE8', '#457EAC', '#FF00FF', '#008B8B', '#B8860B', '#006400']
+    return colors[task_id - 1]
+
+
 def draw_gantt_chart(datas):
-    transformed_data = {'CPUID': [], 'PID': [], 'START': [], 'END': []}
 
-    cpu_index = 0;
-    for data in datas:
-        for task in data:
-            transformed_data['CPUID'].append(cpu_index)
-            transformed_data['PID'].append(task.pid)
-            transformed_data['START'].append(task.dispatch_time)
-            transformed_data['END'].append(task.preempt_time)
-        cpu_index += 1
+    datas = [item for item in datas if item]
+    fig: plt.Figure = plt.figure(figsize=(16, 4), facecolor='#1E1E24')
+    ax: plt.Axes = fig.add_subplot(facecolor='#1E1E24')
+    for cpuid, cpu in enumerate(datas):
+        for task in cpu:
+            ax.broken_barh([(task.dispatch_time, task.preempt_time -
+                           task.dispatch_time)], (cpuid - 0.5, 0.75), color=task_color(task.pid), edgecolor='#1E1E24')
 
-    df = pd.DataFrame(transformed_data)
-    df['Time slot'] = df['END'] - df['START']
-    print(df)
+    max_time_slot = 0
+    pid_max_index = 0
+    for cpu in datas:
+        for task in cpu:
+            if(task.preempt_time > max_time_slot):
+                max_time_slot = task.preempt_time
+            if task.pid > pid_max_index:
+                pid_max_index = task.pid
+
+    ax.set_xticks(np.arange(0, max_time_slot + 1, 1))
+    ax.set_xticklabels(np.arange(0, max_time_slot + 1, 1), color='w')
+    ax.set_xlim(0, max_time_slot + 1)
+
+    ax.set_axisbelow(True)
+    ax.xaxis.grid(color='k', linestyle='dashed', alpha=0.4, which='both')
+
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['left'].set_position(('outward', 10))
+    ax.spines['top'].set_visible(False)
+    ax.spines['bottom'].set_color('w')
+
+    ax.set_yticks([i for i in np.arange(len(datas))])
+    ax.set_yticklabels([f'CPU{i}' for i in np.arange(len(datas))], color='w')
+
+    legends = [Patch(facecolor=task_color(pid), label=f'PID: {pid}') for pid in range(1, pid_max_index + 1)]
+    ax.legend(handles=legends)
+
+
+    plt.show()
+
 
 def main():
     datas = read_data_from_stdin()
-    cpu = 0
-    for data in datas:
-        print(f'CPU: {cpu} {data}')
-        cpu = cpu + 1
+    # cpu = 0
+    # for data in datas:
+    #     print(f'CPU: {cpu} {data}')
+    #     cpu = cpu + 1
 
     draw_gantt_chart(datas)
 
