@@ -93,7 +93,7 @@ static int translate(
     return 0;
 }
 
-static void set_mem_stat(uint32_t _mem_stat_index, uint32_t index, uint32_t pid, int next) {
+static void set_mem_stat(uint32_t _mem_stat_index, uint32_t index, uint32_t pid, int32_t next) {
     _mem_stat[_mem_stat_index].proc = pid;
     _mem_stat[_mem_stat_index].index = index;
     _mem_stat[_mem_stat_index].next = next;
@@ -146,7 +146,7 @@ addr_t alloc_mem(uint32_t size, struct pcb_t *proc) {
         const uint32_t free_frame_physical_index = free_frame_physical_indexes[i];
 
         // _mem_stat handling
-        set_mem_stat(free_frame_physical_index, i, proc->pid, i == free_frame_available - 1 ? -1 : free_frame_physical_indexes[i + 1]);
+        set_mem_stat(free_frame_physical_index, i, proc->pid, i == free_frame_available - 1 ? (int32_t)-1 : (int32_t)free_frame_physical_indexes[i + 1]);
         INFO_PRINT("PID %d: Free page physical index: %d\n", proc->pid, free_frame_physical_index);
         INFO_PRINT("PID %d: Free page info: proc: %d, index: %d, next: %d\n", proc->pid, _mem_stat[free_frame_physical_index].proc, _mem_stat[free_frame_physical_index].index, _mem_stat[free_frame_physical_index].next);
 
