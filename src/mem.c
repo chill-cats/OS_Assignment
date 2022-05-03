@@ -120,54 +120,56 @@ addr_t alloc_mem(uint32_t size, struct pcb_t *proc) {
 
     uint32_t required_page_count = (size % PAGE_SIZE) ? size / PAGE_SIZE + 1 : size / PAGE_SIZE; // Number of pages we will use
     INFO_PRINT("PID %d: Required page count: %d\n", proc->pid, required_page_count);
-    uint32_t *free_frame_physical_indexes = calloc(required_page_count, sizeof(uint32_t));
-    uint32_t free_frame_available = 0;
+    uint32_t *free_frame_physical_indexes = calloc(required_page_count, sizeof(uint32_t)); // allocate array for storing free page index in _mem_stat
+    uint32_t free_frame_available = 0;                                                     // number of free page in _mem_stat found
 
-    for (uint32_t free_frame_physical_index = 0; free_frame_physical_index < NUM_PAGES; free_frame_physical_index++) {
-        if (_mem_stat[free_frame_physical_index].proc == 0) {
-            free_frame_physical_indexes[free_frame_available] = free_frame_physical_index;
-            free_frame_available++;
+    for (uint32_t free_frame_physical_index = 0; free_frame_physical_index < NUM_PAGES; free_frame_physical_index++) { // loop through _mem_stat
+        if (_mem_stat[free_frame_physical_index].proc == 0) {                                                          // if free page
+            free_frame_physical_indexes[free_frame_available] = free_frame_physical_index;                             // add free page index to array
+            free_frame_available++;                                                                                    // increment number of free page
         }
 
-        if (free_frame_available == required_page_count) {
+        if (free_frame_available == required_page_count) { // if we have enough free page
             break;
         }
     }
-    const uint32_t start_of_chunk = proc->bp;
-    const uint32_t end_of_chunk = proc->bp + PAGE_SIZE * required_page_count;
-    if (free_frame_available < required_page_count && end_of_chunk > RAM_SIZE) {
+
+    const uint32_t start_of_chunk = proc->bp;                                    // start of the chunk we will allocate
+    const uint32_t end_of_chunk = proc->bp + PAGE_SIZE * required_page_count;    // end of the chunk we will allocate
+    if (free_frame_available < required_page_count || end_of_chunk > RAM_SIZE) { // if we don't have enough free page or we will exceed RAM size
         INFO_PRINT("PID %d: Not enough memory\n", proc->pid);
         pthread_mutex_unlock(&mem_lock);
-        return 1;
+        return 0;
     }
 
-    for (uint32_t i = 0; i < free_frame_available; i++) {
+    for (uint32_t i = 0; i < free_frame_available; i++) { // loop through all free page index
         const uint32_t free_frame_physical_index = free_frame_physical_indexes[i];
+
         // _mem_stat handling
         set_mem_stat(free_frame_physical_index, i, proc->pid, i == free_frame_available - 1 ? -1 : free_frame_physical_indexes[i + 1]);
-        INFO_PRINT("PID %d: Free frame physical index: %d\n", proc->pid, free_frame_physical_index);
-        INFO_PRINT("PID %d: Free frame info: proc: %d, index: %d, next: %d\n", proc->pid, _mem_stat[free_frame_physical_index].proc, _mem_stat[free_frame_physical_index].index, _mem_stat[free_frame_physical_index].next);
+        INFO_PRINT("PID %d: Free page physical index: %d\n", proc->pid, free_frame_physical_index);
+        INFO_PRINT("PID %d: Free page info: proc: %d, index: %d, next: %d\n", proc->pid, _mem_stat[free_frame_physical_index].proc, _mem_stat[free_frame_physical_index].index, _mem_stat[free_frame_physical_index].next);
 
-        uint32_t current_address = start_of_chunk + i * PAGE_SIZE;
+        uint32_t current_address = start_of_chunk + i * PAGE_SIZE; // virtual address of the current page
         uint32_t current_segment_v_index = get_first_lv(current_address);
         uint32_t current_page_v_index = get_second_lv(current_address);
 
-        struct page_table_t *page_table = NULL;
+        struct page_table_t *page_table = NULL; // page table of the current segment
 
-        for (uint32_t segment_index = 0; segment_index < proc->seg_table->segment_count; segment_index++) {
-            if (proc->seg_table->segments[segment_index].v_index == current_segment_v_index) {
+        for (uint32_t segment_index = 0; segment_index < proc->seg_table->segment_count; segment_index++) { // loop through all segment
+            if (proc->seg_table->segments[segment_index].v_index == current_segment_v_index) {              // if we found the segment with v_index = current_segment_v_index
                 page_table = proc->seg_table->segments[segment_index].pages_table;
                 break;
             }
         }
 
-        if (page_table == NULL) {
-            page_table = calloc(1, sizeof(struct page_table_t));
-            proc->seg_table->segments[proc->seg_table->segment_count].pages_table = page_table;
-            proc->seg_table->segments[proc->seg_table->segment_count].v_index = current_segment_v_index;
-            proc->seg_table->segment_count++;
+        if (page_table == NULL) {                                                                        // if we can't find the segment
+            page_table = calloc(1, sizeof(struct page_table_t));                                         // create new page table
+            proc->seg_table->segments[proc->seg_table->segment_count].pages_table = page_table;          // add newly created page table to segment table as new segment
+            proc->seg_table->segments[proc->seg_table->segment_count].v_index = current_segment_v_index; // set v_index of the new segment
+            proc->seg_table->segment_count++;                                                            // increment segment count
 
-            initialize_page_table(page_table);
+            initialize_page_table(page_table); // set all data in page table to default
         }
 
         page_table->pages[page_table->page_count].p_index = free_frame_physical_index;
@@ -176,8 +178,8 @@ addr_t alloc_mem(uint32_t size, struct pcb_t *proc) {
     }
 
     /* We could allocate new memory region to the process */
-    ret_mem = proc->bp;
-    proc->bp = end_of_chunk;
+    ret_mem = proc->bp;      // return virtual address of the allocated memory
+    proc->bp = end_of_chunk; // set new value of bp
     /* Update status of physical pages which will be allocated
      * to [proc] in _mem_stat. Tasks to do:
      * 	- Update [proc], [index], and [next] field
@@ -218,65 +220,71 @@ void adjust_bp(struct pcb_t *proc) {
 int free_mem(addr_t address, struct pcb_t *proc) {
     pthread_mutex_lock(&mem_lock);
 
-    uint32_t current_address = address;
-    bool hasNext = true;
-    while (hasNext) {
-        uint32_t current_segment_v_index = get_first_lv(current_address);
-        uint32_t current_page_v_index = get_second_lv(current_address);
+    uint32_t current_address = address;                                   // virtual address of the current page we want to free
+    bool hasNext = true;                                                  // flag to check if we have next page to free
+    while (hasNext) {                                                     // while the current page have next page
+        uint32_t current_segment_v_index = get_first_lv(current_address); // get current segment index
+        uint32_t current_page_v_index = get_second_lv(current_address);   // get current page index
 
-        struct page_table_t *page_table = get_page_table(current_segment_v_index, proc->seg_table);
-        if (page_table == NULL) {
-            pthread_mutex_unlock(&mem_lock);
-            return 1;
+        struct page_table_t *page_table = get_page_table(current_segment_v_index, proc->seg_table); // get page table of the current segment
+        if (page_table == NULL) {                                                                   // if we can't find the segment (aka we want to free invalid memory)
+            pthread_mutex_unlock(&mem_lock);                                                        // bail out
+            return 0;
         }
 
-        uint32_t current_page_index = 32;
-        for (uint32_t i = 0; i < page_table->page_count; i++) {
-            if (page_table->pages[i].v_index == current_page_v_index) {
+        uint32_t current_page_index = 32;                               // index of the current page in the page table
+        for (uint32_t i = 0; i < page_table->page_count; i++) {         // loop through all pages in the page table
+            if (page_table->pages[i].v_index == current_page_v_index) { // if we found the page with v_index = current_page_v_index
                 current_page_index = i;
                 break;
             }
         }
-        if (current_page_index == 32) {
-            pthread_mutex_unlock(&mem_lock);
-            return 1;
+        if (current_page_index == 32) {      // if we can't find the page
+            pthread_mutex_unlock(&mem_lock); // bail out
+            return 0;
         }
 
-        uint32_t frame_index = page_table->pages[current_page_index].p_index;
-        hasNext = _mem_stat[frame_index].next != -1;
-        unset_mem_stat(frame_index);
+        uint32_t frame_index = page_table->pages[current_page_index].p_index; // get the index in _mem_stat of the current page
+        hasNext = _mem_stat[frame_index].next != -1;                          // check if the current page have next page to free
+        unset_mem_stat(frame_index);                                          // unset the current page in _mem_stat
 
-        page_table->pages[current_page_index].p_index = 32;
-        page_table->pages[current_page_index].v_index = 32;
+        page_table->pages[current_page_index].p_index = 32; // set the current page to invalid
+        page_table->pages[current_page_index].v_index = 32; // set the current page to invalid
+
+        // compact the page table
         for (uint32_t i = current_page_index; i < page_table->page_count - 1; i++) {
             page_table->pages[i] = page_table->pages[i + 1];
         }
 
-        page_table->pages[page_table->page_count].p_index = 32;
-        page_table->pages[page_table->page_count].v_index = 32;
-        page_table->page_count--;
+        page_table->pages[page_table->page_count].p_index = 32; // set the last page (new empty spot we just created) to invalid
+        page_table->pages[page_table->page_count].v_index = 32; // set the last page (new empty spot we just created) to invalid
+        page_table->page_count--;                               // decrement page count
 
-        if (page_table->page_count == 0) {
-            for (uint32_t i = 0; i < proc->seg_table->segment_count; i++) {
-                if (proc->seg_table->segments[i].v_index == current_segment_v_index) {
-                    free(proc->seg_table->segments[i].pages_table);
+        // compact the segment table
+        if (page_table->page_count == 0) {                                             // if the page table is empty
+            for (uint32_t i = 0; i < proc->seg_table->segment_count; i++) {            // loop through all segments in the segment table
+                if (proc->seg_table->segments[i].v_index == current_segment_v_index) { // if we found the segment with v_index = current_segment_v_index
+                    free(proc->seg_table->segments[i].pages_table);                    // free the page table of the segment
+
+                    // compact the segment table
                     for (uint32_t j = i; j < proc->seg_table->segment_count - 1; j++) {
                         proc->seg_table->segments[j] = proc->seg_table->segments[j + 1];
                     }
-                    proc->seg_table->segment_count--;
+                    proc->seg_table->segment_count--; // decrement segment count
                     break;
                 }
             }
         }
+
         adjust_bp(proc);
-        current_address += PAGE_SIZE;
+        current_address += PAGE_SIZE; // go to next page in chunk
     }
 #ifdef DEBUG
     // dump();
 #endif
     pthread_mutex_unlock(&mem_lock);
 
-    return 0;
+    return 1;
 }
 
 int read_mem(addr_t address, struct pcb_t *proc, BYTE *data) {
