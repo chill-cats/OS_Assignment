@@ -4,6 +4,7 @@ compile_commands.json
 #exludes all build files
 out/**
 obj/**
+!obj/.gitkeep
 os
 mem
 
