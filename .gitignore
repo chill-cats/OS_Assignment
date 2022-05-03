@@ -8,6 +8,8 @@ obj/**
 os
 mem
 
+report/*.txt
+
 # macos specific
 .DS_Store
 

@@ -138,7 +138,6 @@ def draw_gantt_chart(datas):
     legends = [Patch(facecolor=task_color(pid), label=f'PID: {pid}') for pid in range(1, pid_max_index + 1)]
     ax.legend(handles=legends)
 
-
     plt.show()
 
 
