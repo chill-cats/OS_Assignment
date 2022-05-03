@@ -6,7 +6,13 @@ SRC = src
 OBJ = obj
 INCLUDE = include
 
-CC = clang
+CC := gcc
+detected_OS := $(shell sh -c 'uname 2>/dev/null || echo Unknown')
+
+ifeq ($(detected_OS), Darwin)
+	CC := clang
+endif
+
 ifeq ($(DEBUG),TRUE)
 	DEBUG=-g -O0 -DDEBUG
 else
