@@ -109,6 +109,7 @@ def draw_gantt_chart(datas):
         for task in cpu:
             ax.broken_barh([(task.dispatch_time, task.preempt_time -
                            task.dispatch_time)], (cpuid - 0.5, 0.75), color=task_color(task.pid), edgecolor='#1E1E24')
+            ax.text(x=task.dispatch_time + (task.preempt_time - task.dispatch_time) / 2, y=cpuid + 0.35, s=f'PID: {task.pid}', ha='center', va='center', color=task_color(task.pid), fontsize=8, fontweight='bold')
 
     max_time_slot = 0
     pid_max_index = 0
@@ -135,8 +136,8 @@ def draw_gantt_chart(datas):
     ax.set_yticks([i for i in np.arange(len(datas))])
     ax.set_yticklabels([f'CPU{i}' for i in np.arange(len(datas))], color='w')
 
-    legends = [Patch(facecolor=task_color(pid), label=f'PID: {pid}') for pid in range(1, pid_max_index + 1)]
-    ax.legend(handles=legends)
+    # legends = [Patch(facecolor=task_color(pid), label=f'PID: {pid}') for pid in range(1, pid_max_index + 1)]
+    # ax.legend(handles=legends)
 
     plt.show()
 
