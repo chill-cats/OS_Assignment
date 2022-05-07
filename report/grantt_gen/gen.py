@@ -110,7 +110,7 @@ def draw_gantt_chart(datas):
         for task in cpu:
             ax.broken_barh([(task.dispatch_time, task.preempt_time -
                            task.dispatch_time)], (cpuid - 0.5, 0.75), color=task_color(task.pid), edgecolor='#1E1E24')
-            # ax.text(x=task.dispatch_time + (task.preempt_time - task.dispatch_time) / 2, y=cpuid + 0.35, s=f'PID: {task.pid}', ha='center', va='center', color=task_color(task.pid), fontsize=8, fontweight='bold', rotation=45)
+            ax.text(x=task.dispatch_time + (task.preempt_time - task.dispatch_time) / 2, y=cpuid + 0.35, s=f'{task.pid}', ha='center', va='center', color=task_color(task.pid), fontsize=8, fontweight='bold')
 
     max_time_slot = 0
     pid_max_index = 0
